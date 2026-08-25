@@ -1,0 +1,28 @@
+# Python and Environment
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Heavy Model Weights and Datasets (Kept local on VM, not pushed to GitHub)
+data/raw/
+data/tokenized/
+checkpoints/
+models/
+*.pt
+*.bin
+*.npy
+*.gguf
+*.safetensors
+
+# Logs and Metrics
+logs/
+wandb/
+.tensorboard/
+
+# Environment Variables and Secrets
+.env
+*.pem
+*.key
