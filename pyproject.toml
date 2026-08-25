@@ -1,28 +1,28 @@
 [build-system]
-requires = [" setuptools>=61.0\]
-build-backend = \setuptools.build_meta\
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = \slm-lab\
-version = \0.1.0\
-description = \Small Language Model Laboratory: Tokenization Pretraining SFT and GGUF Export\
-authors = [{ name = \neverlone\ }]
-readme = \README.md\
-requires-python = \>=3.10\
+name = "slm-lab"
+version = "0.1.0"
+description = "Small Language Model Laboratory: Tokenization, Pretraining, SFT, and GGUF Export"
+authors = [{ name = "neverlone" }]
+readme = "README.md"
+requires-python = ">=3.10"
 dependencies = [
- \torch>=2.1.0\,
- \tokenizers>=0.15.0\,
- \transformers>=4.38.0\,
- \datasets>=2.18.0\,
- \accelerate>=0.27.0\,
- \numpy>=1.24.0\,
- \pyyaml>=6.0\,
- \tqdm>=4.66.0\,
- \einops>=0.7.0\,
- \fastapi>=0.110.0\,
- \uvicorn>=0.28.0\,
+    "torch>=2.1.0",
+    "tokenizers>=0.15.0",
+    "transformers>=4.38.0",
+    "datasets>=2.18.0",
+    "accelerate>=0.27.0",
+    "numpy>=1.24.0",
+    "pyyaml>=6.0",
+    "tqdm>=4.66.0",
+    "einops>=0.7.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
 ]
 
 [tool.setuptools.packages.find]
-where = [\.\]
-include = [\src*\]
+where = ["."]
+include = ["src*"]
