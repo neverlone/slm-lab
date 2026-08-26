@@ -1,29 +1,36 @@
 """
 Takatsuki Neural Web Chat & Persistent Memory API Server.
-Features:
-- Sen Takatsuki Persona (Eto Yoshimura authorial voice, uncensored, sharp, conversational).
-- Distributed routing: Offloads Takatsuki-8B to 16-core data-forge machine via encrypted tunnel (http://localhost:8001/chat).
-- Local ARM64 execution for Takatsuki-150M & 3B.
-- SQLite Persistent Memory.
+High-concurrency non-blocking async server.
 """
 
 import os
 import time
 import json
 import sqlite3
-import urllib.request
+import httpx
 from typing import List, Dict, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI(title="Takatsuki AI Lab")
 
-DB_PATH = "data/takatsuki_memory.db"
-MODELS_DIR = "models"
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_INDEX = os.path.join(BASE_DIR, "static", "index.html")
+DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "data", "takatsuki_memory.db")
+MODELS_DIR = os.path.join(os.path.dirname(BASE_DIR), "models")
 DATA_FORGE_WORKER_URL = "http://localhost:8001/chat"
 
-os.makedirs("data", exist_ok=True)
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 SEN_TAKATSUKI_SYSTEM_PROMPT = (
@@ -79,7 +86,6 @@ def get_local_llama_engine(model_id: str):
     return loaded_models[model_id]
 
 
-# Initialize SQLite Persistent Memory
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -108,7 +114,7 @@ class ChatRequest(BaseModel):
 
 
 @app.get("/api/models")
-def get_available_models():
+async def get_available_models():
     return {
         "models": [
             {
@@ -157,29 +163,25 @@ async def chat_stream(req: ChatRequest):
     async def event_generator():
         full_response = ""
 
-        # Route Takatsuki-8B to 16-core data-forge machine
+        # Route Takatsuki-8B to 16-core data-forge machine asynchronously
         if req.model == "Takatsuki-8B":
             try:
-                data_payload = json.dumps({
+                payload = {
                     "messages": prompt_messages,
                     "temperature": req.temperature,
                     "max_tokens": req.max_tokens,
-                }).encode("utf-8")
-                
-                remote_req = urllib.request.Request(
-                    DATA_FORGE_WORKER_URL,
-                    data=data_payload,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                with urllib.request.urlopen(remote_req, timeout=120) as resp:
-                    for line in resp:
-                        line_str = line.decode("utf-8").strip()
-                        if line_str.startswith("data: "):
-                            chunk = json.loads(line_str[6:])
-                            if "delta" in chunk:
-                                full_response += chunk["delta"]
-                                yield f"data: {json.dumps({'delta': chunk['delta']})}\n\n"
+                }
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    async with client.stream("POST", DATA_FORGE_WORKER_URL, json=payload) as resp:
+                        async for line in resp.aiter_lines():
+                            if line.startswith("data: "):
+                                try:
+                                    chunk = json.loads(line[6:])
+                                    if "delta" in chunk:
+                                        full_response += chunk["delta"]
+                                        yield f"data: {json.dumps({'delta': chunk['delta']})}\n\n"
+                                except Exception:
+                                    pass
 
             except Exception as e:
                 # Fallback to local 8B engine
@@ -197,7 +199,7 @@ async def chat_stream(req: ChatRequest):
                             full_response += delta
                             yield f"data: {json.dumps({'delta': delta})}\n\n"
                 else:
-                    err_msg = f"\n[Connecting to Takatsuki-8B worker: {e}]"
+                    err_msg = f"\n[Connecting to worker: {e}]"
                     full_response += err_msg
                     yield f"data: {json.dumps({'delta': err_msg})}\n\n"
 
@@ -242,7 +244,7 @@ async def chat_stream(req: ChatRequest):
 
 
 @app.get("/api/history/{session_id}")
-def get_history(session_id: str):
+async def get_history(session_id: str):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
@@ -254,11 +256,10 @@ def get_history(session_id: str):
     return {"history": [{"role": r[0], "content": r[1], "timestamp": r[2]} for r in rows]}
 
 
-@app.get("/", response_class=HTMLResponse)
-def index():
-    html_path = "web/static/index.html"
-    if os.path.exists(html_path):
-        with open(html_path, "r", encoding="utf-8") as f:
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def index():
+    if os.path.exists(STATIC_INDEX):
+        with open(STATIC_INDEX, "r", encoding="utf-8") as f:
             return f.read()
     return "<h1>Takatsuki AI Web UI</h1>"
 
