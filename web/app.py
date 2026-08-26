@@ -1,7 +1,8 @@
 """
 Takatsuki Neural Web Chat & Multi-Session Persistent Memory API Server.
 Features:
-- Sen Takatsuki Persona: Self-identifies as a girl/woman, NEVER assumes user gender.
+- Expanded Context Window: 8,192 tokens (with automatic sliding window protection).
+- Sen Takatsuki Persona: Self-identifies as a girl/woman, user-neutral.
 - Multi-Chat Sessions & Guaranteed SQLite Hard-Delete (VACUUM).
 - Zoom Scaling & Dynamic Avatar Asset Serving.
 """
@@ -35,6 +36,8 @@ AVATAR_PATH = os.path.join(STATIC_DIR, "avatar.png")
 DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "data", "takatsuki_memory.db")
 MODELS_DIR = os.path.join(os.path.dirname(BASE_DIR), "models")
 
+CONTEXT_WINDOW = 8192  # Expanded 8K context window
+
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
@@ -58,7 +61,7 @@ SEN_TAKATSUKI_SYSTEM_PROMPT = (
 loaded_models = {}
 
 def get_llama_engine(model_id: str):
-    """Loads and caches local GGUF models on sen-takatsuki with 4 ARM64 threads."""
+    """Loads and caches local GGUF models on sen-takatsuki with 8K context window."""
     try:
         from llama_cpp import Llama
     except ImportError:
@@ -82,11 +85,11 @@ def get_llama_engine(model_id: str):
             return None
 
     if model_id not in loaded_models:
-        print(f"Loading neural weights for {model_id} from {model_path}...")
+        print(f"Loading neural weights for {model_id} from {model_path} with {CONTEXT_WINDOW} context window...")
         loaded_models.clear()
         loaded_models[model_id] = Llama(
             model_path=model_path,
-            n_ctx=2048,
+            n_ctx=CONTEXT_WINDOW,
             n_threads=4,
             verbose=False,
         )
@@ -133,7 +136,7 @@ class ChatRequest(BaseModel):
     model: str = "Takatsuki-8B"
     messages: List[Dict[str, str]]
     temperature: float = 0.75
-    max_tokens: int = 1024
+    max_tokens: int = 1536
 
 
 @app.get("/api/models")
@@ -142,14 +145,14 @@ async def get_available_models():
         "models": [
             {
                 "id": "Takatsuki-8B",
-                "name": "Takatsuki-8B (Flagship Refusal-Free)",
+                "name": "Takatsuki-8B (8K Context Flagship)",
                 "size": "8.0B Parameters",
                 "speed": "~10 tok/s",
                 "status": "Active",
             },
             {
                 "id": "Takatsuki-3B",
-                "name": "Takatsuki-3B (High-Speed Refusal-Free)",
+                "name": "Takatsuki-3B (8K Context High-Speed)",
                 "size": "3.0B Parameters",
                 "speed": "~18 tok/s",
                 "status": "Active",
@@ -270,9 +273,25 @@ async def chat_stream(req: ChatRequest):
     conn.commit()
     conn.close()
 
+    # Intelligent Context Window Windowing:
+    # Always keep system prompt + trim oldest messages if conversation exceeds context limit
     prompt_messages = [{"role": "system", "content": SEN_TAKATSUKI_SYSTEM_PROMPT}]
-    for m in req.messages:
-        prompt_messages.append({"role": m["role"], "content": m["content"]})
+    
+    # Estimate characters/tokens (1 token ~ 3.5 chars)
+    # Reserve ~1500 tokens for generation, leaving ~6500 tokens for context history
+    MAX_HISTORY_CHARS = 22000 
+    history_to_include = []
+    current_chars = 0
+
+    for m in reversed(req.messages):
+        msg_len = len(m.get("content", ""))
+        if current_chars + msg_len > MAX_HISTORY_CHARS and len(history_to_include) >= 2:
+            break
+        history_to_include.append({"role": m["role"], "content": m["content"]})
+        current_chars += msg_len
+
+    history_to_include.reverse()
+    prompt_messages.extend(history_to_include)
 
     engine = get_llama_engine(req.model)
 
