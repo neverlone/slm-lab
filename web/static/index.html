@@ -59,8 +59,8 @@
         }
 
         .avatar-brand {
-            width: 52px;
-            height: 52px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid var(--accent);
@@ -76,7 +76,7 @@
         }
 
         .brand-name {
-            font-size: 1.05rem;
+            font-size: 1.02rem;
             font-weight: 600;
             letter-spacing: -0.01em;
             display: flex;
@@ -274,8 +274,8 @@
         }
 
         .msg-avatar {
-            width: 48px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid var(--accent);
@@ -419,11 +419,11 @@
 <body>
     <div id="sidebar">
         <div class="brand-header">
-            <img src="/avatar.png" alt="Sen Takatsuki" class="avatar-brand" onerror="this.style.display='none'" />
+            <img src="/avatar.png" alt="Takatsuki AI" class="avatar-brand" onerror="this.style.display='none'" />
             <div class="brand-info">
                 <div class="brand-name">
-                    Sen Takatsuki
-                    <span class="badge">Eto</span>
+                    Takatsuki AI
+                    <span class="badge">Neural</span>
                 </div>
                 <div class="brand-status">Online</div>
             </div>
@@ -431,10 +431,10 @@
 
         <button id="btn-new-chat" class="btn-new-chat">+ New Chat</button>
 
-        <div class="label">Model</div>
+        <div class="label">Model Engine</div>
         <select id="model-select" class="select-box">
             <option value="Takatsuki-8B" selected>Takatsuki-8B (Flagship)</option>
-            <option value="Takatsuki-3B">Takatsuki-3B (Fast Pragmatic)</option>
+            <option value="Takatsuki-3B">Takatsuki-3B (High-Speed)</option>
             <option value="Takatsuki-150M">Takatsuki-150M (From Scratch)</option>
         </select>
 
@@ -454,7 +454,7 @@
         <div id="chat-window"></div>
 
         <div id="composer">
-            <textarea id="input-box" placeholder="Say something to Sen..." rows="1"></textarea>
+            <textarea id="input-box" placeholder="Message Takatsuki..." rows="1"></textarea>
             <button id="send-btn" class="btn">Send</button>
             <button id="cancel-btn" class="btn">Cancel Query</button>
         </div>
@@ -583,7 +583,7 @@
         }
 
         function appendGreeting() {
-            renderMessageRow(null, 'assistant', "Well, look who finally decided to show up. What kind of puzzle, bad idea, or code mess are we dissecting today?");
+            renderMessageRow(null, 'assistant', "Hello. I am Takatsuki, an AI assistant. How can I help you today?");
         }
 
         function renderMessageRow(msgId, role, content) {
@@ -594,7 +594,7 @@
             if (role !== 'user') {
                 const avatar = document.createElement('img');
                 avatar.src = '/avatar.png';
-                avatar.alt = 'Sen Takatsuki';
+                avatar.alt = 'Takatsuki AI';
                 avatar.className = 'msg-avatar';
                 avatar.onerror = () => { avatar.style.display = 'none'; };
                 container.appendChild(avatar);
@@ -608,7 +608,7 @@
 
             const sender = document.createElement('div');
             sender.className = 'msg-sender';
-            sender.innerText = role === 'user' ? 'You' : 'Sen Takatsuki';
+            sender.innerText = role === 'user' ? 'You' : 'Takatsuki';
             header.appendChild(sender);
 
             if (msgId) {
@@ -684,8 +684,8 @@
                         session_id: currentSessionId,
                         model: modelSelect.value,
                         messages: messageHistory,
-                        temperature: 0.75,
-                        max_tokens: 1024
+                        temperature: 0.7,
+                        max_tokens: 1536
                     }),
                     signal: currentAbortController.signal
                 });
@@ -714,7 +714,7 @@
                     }
                 }
                 messageHistory.push({ role: 'assistant', content: fullResponse });
-                loadSessions(); // Refresh titles in sidebar
+                loadSessions();
             } catch (err) {
                 if (err.name === 'AbortError') {
                     botBubble.innerText += "\n[Query cancelled by user.]";
