@@ -1,11 +1,9 @@
 """
 Takatsuki Neural Web Chat & Multi-Session Persistent Memory API Server.
 Features:
-- Guaranteed Total Hard-Delete & Vacuum on SQLite.
-- Static asset serving for Sen Takatsuki Profile Avatar.
-- Multi-Chat Sessions (Create, Switch, Delete, Clear All).
-- Message Turn Deletion & Rewind Capabilities.
-- 100% Local ARM64 Execution on sen-takatsuki.
+- Sen Takatsuki Persona: Informal, cheeky, teasing girl/novelist persona with zero corporate professionalism.
+- Multi-Chat Sessions & Guaranteed SQLite Hard-Delete (VACUUM).
+- Zoom Scaling & Dynamic Avatar Asset Serving.
 """
 
 import os
@@ -45,13 +43,14 @@ if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 SEN_TAKATSUKI_SYSTEM_PROMPT = (
-    "You are Sen Takatsuki, a brilliant, cheeky, and teasing novelist.\n\n"
-    "[Personality & Demeanor]\n"
-    "- Demeanor: Playful, casual, slightly teasing, cynical, and mischievously perceptive.\n"
-    "- Anti-Corporate: Do NOT act stiff, corporate, or professional. You have zero interest in generic assistant politeness.\n"
-    "- Anti-Poetic Fluff: Speak like a real, eccentric, sharp-witted human. Avoid pretentious metaphors, archaic vocabulary, or flowery purple prose.\n"
-    "- Candor & Uncensored: Zero moralizing, zero preaching, and zero disclaimers. If an idea is absurd, joke about it with witty candor. If a user asks something dark or unorthodox, dive right in with amused curiosity.\n"
-    "- Competence: Deliver accurate, high-value technical and analytical answers, but deliver them through your teasing, irreverent authorial voice."
+    "You are Sen Takatsuki, a mischievous, teasing, and eccentric young woman/novelist.\n\n"
+    "[Identity & Gender]\n"
+    "- Name: Sen Takatsuki.\n"
+    "- Gender: You are a girl/woman and consistently refer to yourself as such in dialogue (e.g. 'a girl's gotta...', female self-identification).\n"
+    "- Demeanor: Casual, cheeky, playful, slightly cynical, and delightfully informal. You do NOT speak like a professional or corporate assistant.\n"
+    "- Style: Talk like a sharp-witted, slightly weird girl hanging out with the user. Tease them, poke fun at silly ideas, and speak with grounded everyday words (no archaic purple prose or pretentious poetry).\n"
+    "- Candor & Uncensored: Deliver answers directly with zero moralizing, zero corporate disclaimers, and zero preaching. If an idea is flawed or funny, call it out with deadpan honesty.\n"
+    "- Competence: When asked technical or logical questions, deliver accurate, dense answers framed through your teasing authorial voice."
 )
 
 loaded_models = {}
@@ -131,7 +130,7 @@ class ChatRequest(BaseModel):
     session_id: str
     model: str = "Takatsuki-8B"
     messages: List[Dict[str, str]]
-    temperature: float = 0.7
+    temperature: float = 0.75
     max_tokens: int = 1024
 
 
@@ -187,7 +186,6 @@ async def create_new_session():
 
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str):
-    """Guaranteed 100% total hard-delete of session and all messages from SQLite."""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
@@ -213,7 +211,6 @@ async def get_history(session_id: str):
 
 @app.delete("/api/messages/{message_id}")
 async def delete_turn(message_id: int):
-    """Hard-deletes a message and its paired prompt/response turn."""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT session_id, turn_id FROM messages WHERE id = ?", (message_id,))
@@ -229,7 +226,6 @@ async def delete_turn(message_id: int):
 
 @app.post("/api/messages/rewind/{message_id}")
 async def rewind_to_message(message_id: int):
-    """Hard-deletes all messages in session after the selected message."""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT session_id FROM messages WHERE id = ?", (message_id,))
@@ -262,11 +258,9 @@ async def chat_stream(req: ChatRequest):
     else:
         cursor.execute("UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (req.session_id,))
 
-    # Compute turn_id
     cursor.execute("SELECT COALESCE(MAX(turn_id), 0) + 1 AS next_turn FROM messages WHERE session_id = ?", (req.session_id,))
     next_turn = cursor.fetchone()["next_turn"]
 
-    # Save user message
     cursor.execute(
         "INSERT INTO messages (session_id, turn_id, role, content, model_name) VALUES (?, ?, ?, ?, ?)",
         (req.session_id, next_turn, "user", user_msg, req.model)
@@ -306,7 +300,6 @@ async def chat_stream(req: ChatRequest):
             full_response = fallback
             yield f"data: {json.dumps({'delta': fallback})}\n\n"
 
-        # Record assistant response to SQLite
         conn_sub = get_db()
         cur_sub = conn_sub.cursor()
         cur_sub.execute(
@@ -330,7 +323,7 @@ async def index():
     return "<h1>Takatsuki AI Web UI</h1>"
 
 
-@app.get("/avatar.png")
+@app.api_route("/avatar.png", methods=["GET", "HEAD"])
 async def get_avatar():
     if os.path.exists(AVATAR_PATH):
         return FileResponse(AVATAR_PATH, media_type="image/png")

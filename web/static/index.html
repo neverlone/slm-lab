@@ -22,6 +22,7 @@
             --danger-hover: #d03e42;
             --user-msg: #1a2030;
             --bot-msg: #12151f;
+            --chat-font-size: 0.94rem;
         }
 
         * {
@@ -40,7 +41,7 @@
         }
 
         #sidebar {
-            width: 280px;
+            width: 290px;
             background: var(--sidebar-bg);
             border-right: 1px solid var(--border);
             display: flex;
@@ -52,26 +53,30 @@
         .brand-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 4px 2px 8px;
+            gap: 12px;
+            padding: 4px 2px 10px;
+            border-bottom: 1px solid var(--border);
         }
 
         .avatar-brand {
-            width: 38px;
-            height: 38px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid var(--accent);
+            box-shadow: 0 0 10px rgba(94, 114, 228, 0.25);
+            flex-shrink: 0;
         }
 
         .brand-info {
             display: flex;
             flex-direction: column;
             flex: 1;
+            gap: 2px;
         }
 
         .brand-name {
-            font-size: 0.98rem;
+            font-size: 1.05rem;
             font-weight: 600;
             letter-spacing: -0.01em;
             display: flex;
@@ -80,7 +85,7 @@
         }
 
         .brand-status {
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             color: #2ed573;
             display: flex;
             align-items: center;
@@ -133,7 +138,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
-            margin-top: 6px;
+            margin-top: 4px;
         }
 
         .select-box {
@@ -149,13 +154,42 @@
             cursor: pointer;
         }
 
+        .zoom-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .zoom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .zoom-slider {
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
         #sessions-list {
             flex: 1;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 4px;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         .session-item {
@@ -187,7 +221,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 190px;
+            max-width: 195px;
         }
 
         .session-del {
@@ -220,13 +254,13 @@
             padding: 24px 32px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 22px;
         }
 
         .msg-container {
-            max-width: 820px;
+            max-width: 860px;
             display: flex;
-            gap: 12px;
+            gap: 14px;
             align-items: flex-start;
         }
 
@@ -240,11 +274,12 @@
         }
 
         .msg-avatar {
-            width: 36px;
-            height: 36px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             object-fit: cover;
-            border: 1.5px solid var(--accent);
+            border: 2px solid var(--accent);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
             flex-shrink: 0;
             margin-top: 2px;
         }
@@ -252,8 +287,8 @@
         .msg-body {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            max-width: 740px;
+            gap: 5px;
+            max-width: 780px;
         }
 
         .msg-header {
@@ -264,7 +299,7 @@
         }
 
         .msg-sender {
-            font-size: 0.72rem;
+            font-size: 0.74rem;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
@@ -275,7 +310,7 @@
             opacity: 0;
             display: flex;
             gap: 8px;
-            font-size: 0.72rem;
+            font-size: 0.74rem;
             transition: opacity 0.15s ease;
         }
 
@@ -304,12 +339,13 @@
         }
 
         .msg-bubble {
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 0.92rem;
-            line-height: 1.6;
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-size: var(--chat-font-size);
+            line-height: 1.62;
             white-space: pre-wrap;
             word-break: break-word;
+            transition: font-size 0.1s ease;
         }
 
         .msg-container.user .msg-bubble {
@@ -333,16 +369,16 @@
 
         #input-box {
             flex: 1;
-            padding: 11px 14px;
+            padding: 12px 16px;
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 6px;
             color: var(--text-main);
             font-family: inherit;
-            font-size: 0.92rem;
+            font-size: var(--chat-font-size);
             outline: none;
             resize: none;
-            height: 44px;
+            height: 46px;
         }
 
         #input-box:focus {
@@ -350,8 +386,8 @@
         }
 
         .btn {
-            height: 44px;
-            padding: 0 20px;
+            height: 46px;
+            padding: 0 22px;
             border-radius: 6px;
             font-weight: 500;
             font-size: 0.88rem;
@@ -402,6 +438,14 @@
             <option value="Takatsuki-150M">Takatsuki-150M (From Scratch)</option>
         </select>
 
+        <div class="zoom-card">
+            <div class="zoom-header">
+                <span>Text Zoom</span>
+                <span id="zoom-val">100%</span>
+            </div>
+            <input type="range" id="zoom-slider" min="80" max="150" value="100" class="zoom-slider" />
+        </div>
+
         <div class="label">Conversations</div>
         <div id="sessions-list"></div>
     </div>
@@ -410,7 +454,7 @@
         <div id="chat-window"></div>
 
         <div id="composer">
-            <textarea id="input-box" placeholder="Ask Sen Takatsuki anything..." rows="1"></textarea>
+            <textarea id="input-box" placeholder="Say something to Sen..." rows="1"></textarea>
             <button id="send-btn" class="btn">Send</button>
             <button id="cancel-btn" class="btn">Cancel Query</button>
         </div>
@@ -424,10 +468,27 @@
         const modelSelect = document.getElementById('model-select');
         const sessionsList = document.getElementById('sessions-list');
         const btnNewChat = document.getElementById('btn-new-chat');
+        const zoomSlider = document.getElementById('zoom-slider');
+        const zoomVal = document.getElementById('zoom-val');
 
         let currentSessionId = localStorage.getItem('active_session_id') || 'default_session';
         let currentAbortController = null;
         let messageHistory = [];
+
+        // Apply saved zoom level
+        const savedZoom = localStorage.getItem('chat_zoom') || '100';
+        zoomSlider.value = savedZoom;
+        applyZoom(savedZoom);
+
+        function applyZoom(val) {
+            zoomVal.innerText = `${val}%`;
+            const baseRem = 0.94;
+            const newRem = (baseRem * (parseInt(val) / 100)).toFixed(3);
+            document.documentElement.style.setProperty('--chat-font-size', `${newRem}rem`);
+            localStorage.setItem('chat_zoom', val);
+        }
+
+        zoomSlider.addEventListener('input', (e) => applyZoom(e.target.value));
 
         async function loadSessions() {
             try {
@@ -522,7 +583,7 @@
         }
 
         function appendGreeting() {
-            renderMessageRow(null, 'assistant', "Well, look who finally showed up. What kind of puzzle, bad idea, or code mess are we dissecting today?");
+            renderMessageRow(null, 'assistant', "Well, look who finally decided to show up. What kind of puzzle, bad idea, or code mess are we dissecting today?");
         }
 
         function renderMessageRow(msgId, role, content) {
@@ -623,7 +684,7 @@
                         session_id: currentSessionId,
                         model: modelSelect.value,
                         messages: messageHistory,
-                        temperature: 0.7,
+                        temperature: 0.75,
                         max_tokens: 1024
                     }),
                     signal: currentAbortController.signal
