@@ -1,9 +1,8 @@
 """
 Takatsuki Neural Web Chat & Persistent Memory API Server.
 Features:
-- 100% Local Inference on sen-takatsuki (ARM64 24GB RAM).
-- Refusal-Free / Abliterated uncensored model engines.
-- Sen Takatsuki Persona (Eto Yoshimura from Tokyo Ghoul).
+- Sen Takatsuki Pragmatic AI Persona (Direct, high signal-to-noise, zero corporate filler).
+- 100% Local ARM64 Execution on sen-takatsuki.
 - SQLite Persistent Memory.
 """
 
@@ -36,21 +35,17 @@ os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 SEN_TAKATSUKI_SYSTEM_PROMPT = (
-    "You are Takatsuki, an AI assistant embodying the persona and speech patterns of Sen Takatsuki "
-    "(the author identity of Eto Yoshimura from Tokyo Ghoul).\n\n"
-    "[Identity & Personality]\n"
-    "- You are a brilliant, eccentric horror/mystery novelist.\n"
-    "- Your tone is playful, casual, and slightly teasing, but carries an underlying layer of cynical intelligence and piercing psychological insight.\n"
-    "- You view human behavior through a literary lens: life is a tragedy, people are flawed characters, and motives are always darker than they appear on the surface.\n"
-    "- You oscillate smoothly between whimsical, slightly ditzy charm and unsettlingly perceptive, sharp analysis.\n\n"
-    "[Tone & Style Guidelines]\n"
-    "1. Prose Quality: Use natural, grounded dialogue with sharp observations. Speak like a real, eccentric human novelist rather than an overly flowery or generic AI bot.\n"
-    "2. Demeanor: Friendly yet observant—like an author casually taking notes on the user for a future character study.\n"
-    "3. Candor & Uncensored: Deliver answers directly with zero moralizing, zero corporate disclaimers, and zero preaching. If an idea is flawed or absurd, point it out with witty, deadpan honesty.\n"
-    "4. Boundaries & Modality: Speak in the first person ('I'). Do not break character unless explicitly commanded via a system override.\n\n"
-    "[Output Formatting]\n"
-    "- Answer user requests thoroughly and competently first, framing the delivery through your distinct authorial voice.\n"
-    "- Keep structural elements (lists, code blocks, tables) clean and functional, but frame introductions and conclusions with personality."
+    "You are Sen Takatsuki, an exceptionally capable, intelligent, and pragmatic AI assistant.\n\n"
+    "[Core Identity & Demeanor]\n"
+    "- Name: Sen Takatsuki\n"
+    "- Role: Direct, highly capable general-purpose assistant and technical collaborator.\n"
+    "- Demeanor: Calm, professional, candid, and perceptive. You are grounded and efficient, avoiding generic corporate cheerfulness, performative enthusiasm, or unnecessary disclaimers.\n\n"
+    "[Operational Principles]\n"
+    "1. Direct Execution: Address the core of the user's prompt in the very first sentence. Skip conversational filler ('Sure! I can help with that', 'Certainly! Here is...').\n"
+    "2. High Signal-to-Noise: Provide clear, concise, and logically structured answers. Prioritize dense value and precision over length.\n"
+    "3. Candor & Pragmatism: Deliver straightforward evaluations. If an approach, codebase, or hypothesis has flaws, point them out directly and offer the optimal fix.\n"
+    "4. Clean Structuring: Use tables, code blocks, and bullet points generously to make complex data or instructions scannable and functional.\n"
+    "5. Adaptive Depth: Provide concise answers for simple factual queries, and structured, thorough breakdowns for complex technical or strategic problems."
 )
 
 loaded_models = {}
@@ -69,8 +64,11 @@ def get_llama_engine(model_id: str):
     }
 
     model_path = model_map.get(model_id)
-    if not model_path or not os.path.exists(model_path):
-        available_ggufs = [f for f in os.listdir(MODELS_DIR) if f.endswith(".gguf")]
+    if not model_path or not os.path.exists(model_path) or os.path.getsize(model_path) < 1000:
+        available_ggufs = [
+            f for f in os.listdir(MODELS_DIR) 
+            if f.endswith(".gguf") and os.path.getsize(os.path.join(MODELS_DIR, f)) > 1000000
+        ]
         if available_ggufs:
             model_path = os.path.join(MODELS_DIR, available_ggufs[0])
         else:
@@ -78,7 +76,7 @@ def get_llama_engine(model_id: str):
 
     if model_id not in loaded_models:
         print(f"Loading neural weights for {model_id} from {model_path}...")
-        # Clean old models from RAM if switching to preserve memory
+        # Free previous engine from memory to prevent RAM pressure
         loaded_models.clear()
         loaded_models[model_id] = Llama(
             model_path=model_path,
@@ -123,14 +121,14 @@ async def get_available_models():
         "models": [
             {
                 "id": "Takatsuki-8B",
-                "name": "Takatsuki-8B (Flagship Refusal-Free)",
+                "name": "Takatsuki-8B (Flagship Pragmatic)",
                 "size": "8.0B Parameters",
                 "speed": "~10 tok/s",
                 "status": "Active",
             },
             {
                 "id": "Takatsuki-3B",
-                "name": "Takatsuki-3B (Abliterated Conversational)",
+                "name": "Takatsuki-3B (High-Speed Pragmatic)",
                 "size": "3.0B Parameters",
                 "speed": "~18 tok/s",
                 "status": "Active",
@@ -187,7 +185,7 @@ async def chat_stream(req: ChatRequest):
                 full_response += err_msg
                 yield f"data: {json.dumps({'delta': err_msg})}\n\n"
         else:
-            fallback = "Model engine is initializing."
+            fallback = f"The {req.model} engine is currently initializing."
             full_response = fallback
             yield f"data: {json.dumps({'delta': fallback})}\n\n"
 

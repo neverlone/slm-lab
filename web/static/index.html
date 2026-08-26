@@ -227,19 +227,19 @@
     <div id="sidebar">
         <div class="brand">
             Sen Takatsuki
-            <span class="badge">Eto</span>
+            <span class="badge">AI</span>
         </div>
 
         <div class="label">Engine Model</div>
         <select id="model-select" class="select-box">
-            <option value="Takatsuki-8B" selected>Takatsuki-8B (16-Core EPYC)</option>
-            <option value="Takatsuki-3B">Takatsuki-3B (Conversational)</option>
+            <option value="Takatsuki-8B" selected>Takatsuki-8B (Flagship)</option>
+            <option value="Takatsuki-3B">Takatsuki-3B (Fast Pragmatic)</option>
             <option value="Takatsuki-150M">Takatsuki-150M (From Scratch)</option>
         </select>
 
         <div class="info-card">
-            <strong>Persona: Sen Takatsuki</strong>
-            Uncensored author persona with cynical psychological depth, witty candor, and persistent memory.
+            <strong>System: Sen Takatsuki</strong>
+            Pragmatic, direct, high-signal collaborator with zero filler, candor, and persistent memory.
         </div>
     </div>
 
@@ -247,12 +247,12 @@
         <div id="chat-window">
             <div class="msg-row bot">
                 <div class="msg-sender">Sen Takatsuki</div>
-                <div class="msg-bubble">Well, well... what kind of morbid curiosity or intriguing puzzle brings you to my desk today? Let's hear it.</div>
+                <div class="msg-bubble">Ready. Provide your prompt, codebase, or technical problem.</div>
             </div>
         </div>
 
         <div id="composer">
-            <textarea id="input-box" placeholder="Ask Sen Takatsuki anything..." rows="1"></textarea>
+            <textarea id="input-box" placeholder="Message Sen Takatsuki..." rows="1"></textarea>
             <button id="send-btn" class="btn">Send</button>
             <button id="cancel-btn" class="btn">Cancel Query</button>
         </div>
@@ -311,7 +311,7 @@
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
                             try {
-                                const data = JSON.parse(line.substring(6));
+                                const data = json.parse(line.substring(6));
                                 if (data.delta) {
                                     fullResponse += data.delta;
                                     botBubble.innerText = fullResponse;
