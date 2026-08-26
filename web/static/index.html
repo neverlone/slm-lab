@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Takatsuki AI Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0c0e14;
+            --bg-surface: #141721;
+            --bg-elevated: #1d2130;
+            --border: #2b3044;
+            --text-primary: #e6e9f2;
+            --text-secondary: #9098b2;
+            --accent: #4f80ff;
+            --accent-hover: #3d6de6;
+            --user-bubble: #1e2846;
+            --bot-bubble: #171b26;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 280px;
+            background-color: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .brand {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-badge {
+            background-color: var(--accent);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .model-select {
+            width: 100%;
+            padding: 10px 12px;
+            background-color: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            margin-bottom: 24px;
+        }
+
+        .memory-status {
+            background-color: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            margin-top: auto;
+        }
+
+        .memory-status strong {
+            color: var(--text-primary);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-base);
+        }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            max-width: 780px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-role {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .bubble {
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.user .bubble {
+            background-color: var(--user-bubble);
+            border: 1px solid #334470;
+        }
+
+        .message.assistant .bubble {
+            background-color: var(--bot-bubble);
+            border: 1px solid var(--border);
+        }
+
+        #input-container {
+            padding: 20px 30px;
+            background-color: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 12px 16px;
+            background-color: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            resize: none;
+            height: 48px;
+        }
+
+        #user-input:focus {
+            border-color: var(--accent);
+        }
+
+        #send-btn {
+            background-color: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        #send-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        #send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="brand">
+            Takatsuki Lab
+            <span class="brand-badge">Self-Hosted</span>
+        </div>
+
+        <div class="section-label">Active Model</div>
+        <select id="model-select" class="model-select">
+            <option value="Takatsuki-150M">Takatsuki-150M (From Scratch)</option>
+            <option value="Takatsuki-3B">Takatsuki-3B (Conversational)</option>
+            <option value="Takatsuki-8B">Takatsuki-8B (Flagship Uncensored)</option>
+        </select>
+
+        <div class="memory-status">
+            <strong>Persistent Memory Active</strong>
+            SQLite database indexing all conversational history & context on your Always-Free VM.
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="chat-container">
+            <div class="message assistant">
+                <div class="message-role">Takatsuki Assistant</div>
+                <div class="bubble">Welcome to the Takatsuki AI Lab. I am your uncensored local assistant. All models and memory run directly on your Oracle Cloud server. What would you like to explore?</div>
+            </div>
+        </div>
+
+        <div id="input-container">
+            <textarea id="user-input" placeholder="Type a message or request..." rows="1"></textarea>
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const modelSelect = document.getElementById('model-select');
+
+        let messageHistory = [];
+        const sessionId = "session_" + Math.random().toString(36).substring(2, 9);
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            userInput.value = '';
+            appendMessage('user', text);
+            messageHistory.push({ role: 'user', content: text });
+
+            sendBtn.disabled = true;
+            const assistantBubble = appendMessage('assistant', '');
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        model: modelSelect.value,
+                        messages: messageHistory,
+                        temperature: 0.7
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResponse = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.substring(6));
+                            if (data.delta) {
+                                fullResponse += data.delta;
+                                assistantBubble.innerText = fullResponse;
+                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                            }
+                        }
+                    }
+                }
+                messageHistory.push({ role: 'assistant', content: fullResponse });
+            } catch (err) {
+                assistantBubble.innerText = "Error: Could not stream response from inference backend.";
+            } finally {
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        function appendMessage(role, content) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            
+            const roleDiv = document.createElement('div');
+            roleDiv.className = 'message-role';
+            roleDiv.innerText = role === 'user' ? 'You' : modelSelect.value;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'bubble';
+            bubbleDiv.innerText = content;
+
+            msgDiv.appendChild(roleDiv);
+            msgDiv.appendChild(bubbleDiv);
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return bubbleDiv;
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

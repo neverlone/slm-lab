@@ -1,0 +1,62 @@
+Metadata-Version: 2.4
+Name: slm-lab
+Version: 0.1.0
+Summary: Small Language Model Laboratory: Tokenization, Pretraining, SFT, and GGUF Export
+Author: neverlone
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: torch>=2.1.0
+Requires-Dist: tokenizers>=0.15.0
+Requires-Dist: transformers>=4.38.0
+Requires-Dist: datasets>=2.18.0
+Requires-Dist: accelerate>=0.27.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: tqdm>=4.66.0
+Requires-Dist: einops>=0.7.0
+Requires-Dist: fastapi>=0.110.0
+Requires-Dist: uvicorn>=0.28.0
+
+# SLM Lab
+
+A modular framework for designing, tokenizing, pre-training, instruction fine-tuning (SFT), and deploying Small Language Models (SLMs).
+
+## Architecture Overview
+
+- Model Type: Decoder-only Transformer
+- Normalization: RMSNorm (Pre-normalization)
+- Positional Embeddings: Rotary Position Embeddings (RoPE)
+- Feed-Forward Network: SwiGLU Activation
+- Attention Mechanism: Grouped-Query Attention (GQA) with FlashAttention support
+- Tokenizer: Custom Byte-Pair Encoding (BPE) with dedicated chat tokens
+
+## Project Structure
+
+- \configs/\: Model architecture and training hyperparameter configurations.
+- \src/\:
+  - \model/\: PyTorch Transformer architecture implementation.
+  - \	okenizer/\: Tokenizer training, encoding, and vocab management.
+  - \dataset/\: Dataloaders and memory-mapped binary dataset streaming.
+  - \	raining/\: Pre-training, instruction tuning (SFT), and alignment routines.
+  - \export/\: Model serialization, Hugging Face conversion, and GGUF quantization.
+- \web/\: Inference server and web interface.
+- \scripts/\: Dataset preparation and deployment utilities.
+
+## Requirements
+
+- Python >= 3.10
+- PyTorch >= 2.1
+- uv (package management)
+
+## Getting Started
+
+1. Set up the virtual environment:
+   \\\ash
+   uv venv
+   source .venv/bin/activate
+   \\\
+
+2. Install dependencies:
+   \\\ash
+   uv pip install -r requirements.txt
+   \\\
