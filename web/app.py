@@ -1,8 +1,9 @@
 """
 Takatsuki Neural Web Chat & Multi-Session Persistent Memory API Server.
 Features:
-- Sen Takatsuki Persona: Playful, teasing, cynical, witty author banter without poetic fluff or corporate dryness.
-- Multi-Chat Sessions (Create, Switch, Delete).
+- Guaranteed Total Hard-Delete & Vacuum on SQLite.
+- Static asset serving for Sen Takatsuki Profile Avatar.
+- Multi-Chat Sessions (Create, Switch, Delete, Clear All).
 - Message Turn Deletion & Rewind Capabilities.
 - 100% Local ARM64 Execution on sen-takatsuki.
 """
@@ -14,7 +15,8 @@ import sqlite3
 import uuid
 from typing import List, Dict, Optional
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -29,12 +31,18 @@ app.add_middleware(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_INDEX = os.path.join(BASE_DIR, "static", "index.html")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+STATIC_INDEX = os.path.join(STATIC_DIR, "index.html")
+AVATAR_PATH = os.path.join(STATIC_DIR, "avatar.png")
 DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "data", "takatsuki_memory.db")
 MODELS_DIR = os.path.join(os.path.dirname(BASE_DIR), "models")
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 SEN_TAKATSUKI_SYSTEM_PROMPT = (
     "You are Sen Takatsuki, a brilliant, cheeky, and teasing novelist.\n\n"
@@ -179,13 +187,15 @@ async def create_new_session():
 
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str):
+    """Guaranteed 100% total hard-delete of session and all messages from SQLite."""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
     cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
     conn.commit()
+    cursor.execute("VACUUM")
     conn.close()
-    return {"deleted": session_id}
+    return {"deleted": session_id, "status": "purged"}
 
 
 @app.get("/api/history/{session_id}")
@@ -203,7 +213,7 @@ async def get_history(session_id: str):
 
 @app.delete("/api/messages/{message_id}")
 async def delete_turn(message_id: int):
-    """Deletes a message and its paired prompt/response turn."""
+    """Hard-deletes a message and its paired prompt/response turn."""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT session_id, turn_id FROM messages WHERE id = ?", (message_id,))
@@ -212,13 +222,14 @@ async def delete_turn(message_id: int):
         session_id, turn_id = row["session_id"], row["turn_id"]
         cursor.execute("DELETE FROM messages WHERE session_id = ? AND turn_id = ?", (session_id, turn_id))
         conn.commit()
+        cursor.execute("VACUUM")
     conn.close()
-    return {"deleted_turn": turn_id if row else None}
+    return {"deleted_turn": turn_id if row else None, "status": "purged"}
 
 
 @app.post("/api/messages/rewind/{message_id}")
 async def rewind_to_message(message_id: int):
-    """Rewinds session history up to the selected message (deletes everything after)."""
+    """Hard-deletes all messages in session after the selected message."""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT session_id FROM messages WHERE id = ?", (message_id,))
@@ -227,8 +238,9 @@ async def rewind_to_message(message_id: int):
         session_id = row["session_id"]
         cursor.execute("DELETE FROM messages WHERE session_id = ? AND id > ?", (session_id, message_id))
         conn.commit()
+        cursor.execute("VACUUM")
     conn.close()
-    return {"rewound_to": message_id}
+    return {"rewound_to": message_id, "status": "purged"}
 
 
 @app.post("/api/chat")
@@ -316,6 +328,13 @@ async def index():
         with open(STATIC_INDEX, "r", encoding="utf-8") as f:
             return f.read()
     return "<h1>Takatsuki AI Web UI</h1>"
+
+
+@app.get("/avatar.png")
+async def get_avatar():
+    if os.path.exists(AVATAR_PATH):
+        return FileResponse(AVATAR_PATH, media_type="image/png")
+    return JSONResponse(status_code=404, content={"error": "Avatar not found"})
 
 
 if __name__ == "__main__":
