@@ -306,18 +306,21 @@
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
-                    const chunk = decoder.decode(value);
+                    const chunk = decoder.decode(value, { stream: true });
                     const lines = chunk.split('\n');
-                    for (const line of lines) {
+                    for (const rawLine of lines) {
+                        const line = rawLine.trim();
                         if (line.startsWith('data: ')) {
                             try {
-                                const data = json.parse(line.substring(6));
+                                const data = JSON.parse(line.substring(6));
                                 if (data.delta) {
                                     fullResponse += data.delta;
                                     botBubble.innerText = fullResponse;
                                     chatWindow.scrollTop = chatWindow.scrollHeight;
                                 }
-                            } catch (e) {}
+                            } catch (err) {
+                                console.error('SSE Parse Error:', err, line);
+                            }
                         }
                     }
                 }
@@ -326,7 +329,7 @@
                 if (err.name === 'AbortError') {
                     botBubble.innerText += "\n[Query cancelled by user.]";
                 } else {
-                    botBubble.innerText = "\n[Error streaming response.]";
+                    botBubble.innerText += "\n[Error streaming response.]";
                 }
             } finally {
                 currentAbortController = null;
