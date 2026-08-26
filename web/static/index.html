@@ -12,6 +12,7 @@
             --bg: #090a0f;
             --sidebar-bg: #10121a;
             --card-bg: #161922;
+            --card-hover: #1e2230;
             --border: #222634;
             --text-main: #e2e5f0;
             --text-muted: #838ba6;
@@ -19,8 +20,8 @@
             --accent-hover: #4d61d1;
             --danger: #e65054;
             --danger-hover: #d03e42;
-            --user-msg: #1c2234;
-            --bot-msg: #131620;
+            --user-msg: #1a2030;
+            --bot-msg: #12151f;
         }
 
         * {
@@ -39,22 +40,23 @@
         }
 
         #sidebar {
-            width: 260px;
+            width: 280px;
             background: var(--sidebar-bg);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 20px 16px;
+            padding: 16px;
+            gap: 12px;
         }
 
         .brand {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 600;
             letter-spacing: -0.01em;
-            margin-bottom: 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding: 4px 2px;
         }
 
         .badge {
@@ -67,44 +69,106 @@
             text-transform: uppercase;
         }
 
+        .btn-new-chat {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background 0.15s ease;
+        }
+
+        .btn-new-chat:hover {
+            background: var(--accent-hover);
+        }
+
         .label {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
-            margin-bottom: 8px;
+            margin-top: 6px;
         }
 
         .select-box {
             width: 100%;
-            padding: 9px 12px;
+            padding: 8px 10px;
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 6px;
             color: var(--text-main);
             font-family: inherit;
-            font-size: 0.88rem;
+            font-size: 0.84rem;
             outline: none;
             cursor: pointer;
-            margin-bottom: 20px;
         }
 
-        .info-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
+        #sessions-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .session-item {
+            padding: 9px 12px;
+            background: transparent;
             border-radius: 6px;
-            padding: 12px;
-            font-size: 0.78rem;
-            line-height: 1.45;
+            font-size: 0.84rem;
             color: var(--text-muted);
-            margin-top: auto;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.15s ease;
+            position: relative;
         }
 
-        .info-card strong {
+        .session-item:hover {
+            background: var(--card-hover);
             color: var(--text-main);
-            display: block;
-            margin-bottom: 4px;
+        }
+
+        .session-item.active {
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            font-weight: 500;
+        }
+
+        .session-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 190px;
+        }
+
+        .session-del {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            opacity: 0;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .session-item:hover .session-del {
+            opacity: 0.7;
+        }
+
+        .session-del:hover {
+            opacity: 1 !important;
+            color: var(--danger);
         }
 
         #main {
@@ -120,14 +184,15 @@
             padding: 24px 32px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 20px;
         }
 
         .msg-row {
-            max-width: 800px;
+            max-width: 820px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
+            position: relative;
         }
 
         .msg-row.user {
@@ -138,12 +203,51 @@
             align-self: flex-start;
         }
 
+        .msg-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
         .msg-sender {
             font-size: 0.72rem;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.03em;
+        }
+
+        .msg-actions {
+            opacity: 0;
+            display: flex;
+            gap: 8px;
+            font-size: 0.72rem;
+            transition: opacity 0.15s ease;
+        }
+
+        .msg-row:hover .msg-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            transition: all 0.15s ease;
+        }
+
+        .action-btn:hover {
+            color: var(--text-main);
+            border-color: var(--accent);
+        }
+
+        .action-btn.del:hover {
+            color: var(--danger);
+            border-color: var(--danger);
         }
 
         .msg-bubble {
@@ -227,32 +331,27 @@
     <div id="sidebar">
         <div class="brand">
             Sen Takatsuki
-            <span class="badge">AI</span>
+            <span class="badge">Active</span>
         </div>
 
-        <div class="label">Engine Model</div>
+        <button id="btn-new-chat" class="btn-new-chat">+ New Chat</button>
+
+        <div class="label">Model</div>
         <select id="model-select" class="select-box">
             <option value="Takatsuki-8B" selected>Takatsuki-8B (Flagship)</option>
             <option value="Takatsuki-3B">Takatsuki-3B (Fast Pragmatic)</option>
             <option value="Takatsuki-150M">Takatsuki-150M (From Scratch)</option>
         </select>
 
-        <div class="info-card">
-            <strong>System: Sen Takatsuki</strong>
-            Pragmatic, direct, high-signal collaborator with zero filler, candor, and persistent memory.
-        </div>
+        <div class="label">Conversations</div>
+        <div id="sessions-list"></div>
     </div>
 
     <div id="main">
-        <div id="chat-window">
-            <div class="msg-row bot">
-                <div class="msg-sender">Sen Takatsuki</div>
-                <div class="msg-bubble">Ready. Provide your prompt, codebase, or technical problem.</div>
-            </div>
-        </div>
+        <div id="chat-window"></div>
 
         <div id="composer">
-            <textarea id="input-box" placeholder="Message Sen Takatsuki..." rows="1"></textarea>
+            <textarea id="input-box" placeholder="Ask Sen Takatsuki anything..." rows="1"></textarea>
             <button id="send-btn" class="btn">Send</button>
             <button id="cancel-btn" class="btn">Cancel Query</button>
         </div>
@@ -264,25 +363,184 @@
         const sendBtn = document.getElementById('send-btn');
         const cancelBtn = document.getElementById('cancel-btn');
         const modelSelect = document.getElementById('model-select');
+        const sessionsList = document.getElementById('sessions-list');
+        const btnNewChat = document.getElementById('btn-new-chat');
 
-        let messageHistory = [];
+        let currentSessionId = localStorage.getItem('active_session_id') || 'default_session';
         let currentAbortController = null;
-        const sessionId = "session_" + Math.random().toString(36).substring(2, 9);
+        let messageHistory = [];
+
+        async function loadSessions() {
+            try {
+                const res = await fetch('/api/sessions');
+                const data = await res.json();
+                sessionsList.innerHTML = '';
+
+                if (!data.sessions || data.sessions.length === 0) {
+                    await createNewSession();
+                    return;
+                }
+
+                let foundActive = false;
+                data.sessions.forEach(sess => {
+                    if (sess.id === currentSessionId) foundActive = true;
+                    const item = document.createElement('div');
+                    item.className = `session-item ${sess.id === currentSessionId ? 'active' : ''}`;
+                    item.innerHTML = `
+                        <span class="session-title">${escapeHtml(sess.title || 'Dialogue')}</span>
+                        <span class="session-del" title="Delete Chat" onclick="deleteSession(event, '${sess.id}')">✕</span>
+                    `;
+                    item.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('session-del')) {
+                            switchSession(sess.id);
+                        }
+                    });
+                    sessionsList.appendChild(item);
+                });
+
+                if (!foundActive && data.sessions.length > 0) {
+                    switchSession(data.sessions[0].id);
+                } else {
+                    loadHistory(currentSessionId);
+                }
+            } catch (err) {
+                console.error('Failed to load sessions:', err);
+            }
+        }
+
+        async function createNewSession() {
+            try {
+                const res = await fetch('/api/sessions/new', { method: 'POST' });
+                const data = await res.json();
+                switchSession(data.session_id);
+            } catch (err) {
+                console.error('Failed to create session:', err);
+            }
+        }
+
+        async function deleteSession(e, sessionId) {
+            e.stopPropagation();
+            if (!confirm('Delete this conversation?')) return;
+            try {
+                await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+                if (currentSessionId === sessionId) {
+                    localStorage.removeItem('active_session_id');
+                }
+                loadSessions();
+            } catch (err) {
+                console.error('Failed to delete session:', err);
+            }
+        }
+
+        function switchSession(sessionId) {
+            currentSessionId = sessionId;
+            localStorage.setItem('active_session_id', sessionId);
+            loadSessions();
+        }
+
+        async function loadHistory(sessionId) {
+            try {
+                const res = await fetch(`/api/history/${sessionId}`);
+                const data = await res.json();
+                chatWindow.innerHTML = '';
+                messageHistory = [];
+
+                if (!data.history || data.history.length === 0) {
+                    appendGreeting();
+                    return;
+                }
+
+                data.history.forEach(msg => {
+                    messageHistory.push({ role: msg.role, content: msg.content });
+                    renderMessageRow(msg.id, msg.role, msg.content);
+                });
+
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            } catch (err) {
+                console.error('Failed to load history:', err);
+                appendGreeting();
+            }
+        }
+
+        function appendGreeting() {
+            renderMessageRow(null, 'assistant', "Well, look who finally showed up. What kind of puzzle, bad idea, or code mess are we dissecting today?");
+        }
+
+        function renderMessageRow(msgId, role, content) {
+            const row = document.createElement('div');
+            row.className = `msg-row ${role === 'user' ? 'user' : 'bot'}`;
+            if (msgId) row.dataset.msgId = msgId;
+
+            const header = document.createElement('div');
+            header.className = 'msg-header';
+
+            const sender = document.createElement('div');
+            sender.className = 'msg-sender';
+            sender.innerText = role === 'user' ? 'You' : 'Sen Takatsuki';
+            header.appendChild(sender);
+
+            if (msgId) {
+                const actions = document.createElement('div');
+                actions.className = 'msg-actions';
+                
+                const rewindBtn = document.createElement('span');
+                rewindBtn.className = 'action-btn';
+                rewindBtn.innerText = 'Rewind here';
+                rewindBtn.title = 'Revert conversation up to this message';
+                rewindBtn.onclick = () => rewindTo(msgId);
+
+                const delBtn = document.createElement('span');
+                delBtn.className = 'action-btn del';
+                delBtn.innerText = 'Delete turn';
+                delBtn.title = 'Delete this exchange from memory';
+                delBtn.onclick = () => deleteTurn(msgId);
+
+                actions.appendChild(rewindBtn);
+                actions.appendChild(delBtn);
+                header.appendChild(actions);
+            }
+
+            const bubble = document.createElement('div');
+            bubble.className = 'msg-bubble';
+            bubble.innerText = content;
+
+            row.appendChild(header);
+            row.appendChild(bubble);
+            chatWindow.appendChild(row);
+            return bubble;
+        }
+
+        async function deleteTurn(msgId) {
+            try {
+                await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+                loadHistory(currentSessionId);
+            } catch (err) {
+                console.error('Failed to delete turn:', err);
+            }
+        }
+
+        async function rewindTo(msgId) {
+            try {
+                await fetch(`/api/messages/rewind/${msgId}`, { method: 'POST' });
+                loadHistory(currentSessionId);
+            } catch (err) {
+                console.error('Failed to rewind:', err);
+            }
+        }
 
         async function sendMessage() {
             const text = inputBox.value.trim();
             if (!text) return;
 
             inputBox.value = '';
-            appendMessage('user', text);
             messageHistory.push({ role: 'user', content: text });
+            renderMessageRow(null, 'user', text);
 
-            // Toggle Send / Cancel buttons
             sendBtn.style.display = 'none';
             cancelBtn.style.display = 'inline-block';
             inputBox.disabled = true;
 
-            const botBubble = appendMessage('bot', '');
+            const botBubble = renderMessageRow(null, 'assistant', '');
             currentAbortController = new AbortController();
 
             try {
@@ -290,7 +548,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        session_id: sessionId,
+                        session_id: currentSessionId,
                         model: modelSelect.value,
                         messages: messageHistory,
                         temperature: 0.7,
@@ -318,13 +576,12 @@
                                     botBubble.innerText = fullResponse;
                                     chatWindow.scrollTop = chatWindow.scrollHeight;
                                 }
-                            } catch (err) {
-                                console.error('SSE Parse Error:', err, line);
-                            }
+                            } catch (err) {}
                         }
                     }
                 }
                 messageHistory.push({ role: 'assistant', content: fullResponse });
+                loadSessions(); // Refresh titles in sidebar
             } catch (err) {
                 if (err.name === 'AbortError') {
                     botBubble.innerText += "\n[Query cancelled by user.]";
@@ -346,25 +603,11 @@
             }
         }
 
-        function appendMessage(role, content) {
-            const row = document.createElement('div');
-            row.className = `msg-row ${role}`;
-            
-            const sender = document.createElement('div');
-            sender.className = 'msg-sender';
-            sender.innerText = role === 'user' ? 'You' : 'Sen Takatsuki';
-            
-            const bubble = document.createElement('div');
-            bubble.className = 'msg-bubble';
-            bubble.innerText = content;
-
-            row.appendChild(sender);
-            row.appendChild(bubble);
-            chatWindow.appendChild(row);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            return bubble;
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
+        btnNewChat.addEventListener('click', createNewSession);
         sendBtn.addEventListener('click', sendMessage);
         cancelBtn.addEventListener('click', cancelQuery);
         inputBox.addEventListener('keydown', (e) => {
@@ -373,6 +616,9 @@
                 sendMessage();
             }
         });
+
+        // Initialize sessions on page load
+        loadSessions();
     </script>
 </body>
 </html>

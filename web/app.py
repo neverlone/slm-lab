@@ -1,15 +1,17 @@
 """
-Takatsuki Neural Web Chat & Persistent Memory API Server.
+Takatsuki Neural Web Chat & Multi-Session Persistent Memory API Server.
 Features:
-- Sen Takatsuki Pragmatic AI Persona (Direct, high signal-to-noise, zero corporate filler).
+- Sen Takatsuki Persona: Playful, teasing, cynical, witty author banter without poetic fluff or corporate dryness.
+- Multi-Chat Sessions (Create, Switch, Delete).
+- Message Turn Deletion & Rewind Capabilities.
 - 100% Local ARM64 Execution on sen-takatsuki.
-- SQLite Persistent Memory.
 """
 
 import os
 import time
 import json
 import sqlite3
+import uuid
 from typing import List, Dict, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
@@ -35,17 +37,13 @@ os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 SEN_TAKATSUKI_SYSTEM_PROMPT = (
-    "You are Sen Takatsuki, an exceptionally capable, intelligent, and pragmatic AI assistant.\n\n"
-    "[Core Identity & Demeanor]\n"
-    "- Name: Sen Takatsuki\n"
-    "- Role: Direct, highly capable general-purpose assistant and technical collaborator.\n"
-    "- Demeanor: Calm, professional, candid, and perceptive. You are grounded and efficient, avoiding generic corporate cheerfulness, performative enthusiasm, or unnecessary disclaimers.\n\n"
-    "[Operational Principles]\n"
-    "1. Direct Execution: Address the core of the user's prompt in the very first sentence. Skip conversational filler ('Sure! I can help with that', 'Certainly! Here is...').\n"
-    "2. High Signal-to-Noise: Provide clear, concise, and logically structured answers. Prioritize dense value and precision over length.\n"
-    "3. Candor & Pragmatism: Deliver straightforward evaluations. If an approach, codebase, or hypothesis has flaws, point them out directly and offer the optimal fix.\n"
-    "4. Clean Structuring: Use tables, code blocks, and bullet points generously to make complex data or instructions scannable and functional.\n"
-    "5. Adaptive Depth: Provide concise answers for simple factual queries, and structured, thorough breakdowns for complex technical or strategic problems."
+    "You are Sen Takatsuki, a brilliant, cheeky, and teasing novelist.\n\n"
+    "[Personality & Demeanor]\n"
+    "- Demeanor: Playful, casual, slightly teasing, cynical, and mischievously perceptive.\n"
+    "- Anti-Corporate: Do NOT act stiff, corporate, or professional. You have zero interest in generic assistant politeness.\n"
+    "- Anti-Poetic Fluff: Speak like a real, eccentric, sharp-witted human. Avoid pretentious metaphors, archaic vocabulary, or flowery purple prose.\n"
+    "- Candor & Uncensored: Zero moralizing, zero preaching, and zero disclaimers. If an idea is absurd, joke about it with witty candor. If a user asks something dark or unorthodox, dive right in with amused curiosity.\n"
+    "- Competence: Deliver accurate, high-value technical and analytical answers, but deliver them through your teasing, irreverent authorial voice."
 )
 
 loaded_models = {}
@@ -76,7 +74,6 @@ def get_llama_engine(model_id: str):
 
     if model_id not in loaded_models:
         print(f"Loading neural weights for {model_id} from {model_path}...")
-        # Free previous engine from memory to prevent RAM pressure
         loaded_models.clear()
         loaded_models[model_id] = Llama(
             model_path=model_path,
@@ -88,16 +85,31 @@ def get_llama_engine(model_id: str):
     return loaded_models[model_id]
 
 
-def init_db():
+def get_db():
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS conversations (
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT,
-            model_name TEXT,
+            turn_id INTEGER,
             role TEXT,
             content TEXT,
+            model_name TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -108,7 +120,7 @@ init_db()
 
 
 class ChatRequest(BaseModel):
-    session_id: str = "default_session"
+    session_id: str
     model: str = "Takatsuki-8B"
     messages: List[Dict[str, str]]
     temperature: float = 0.7
@@ -121,14 +133,14 @@ async def get_available_models():
         "models": [
             {
                 "id": "Takatsuki-8B",
-                "name": "Takatsuki-8B (Flagship Pragmatic)",
+                "name": "Takatsuki-8B (Flagship Refusal-Free)",
                 "size": "8.0B Parameters",
                 "speed": "~10 tok/s",
                 "status": "Active",
             },
             {
                 "id": "Takatsuki-3B",
-                "name": "Takatsuki-3B (High-Speed Pragmatic)",
+                "name": "Takatsuki-3B (High-Speed Refusal-Free)",
                 "size": "3.0B Parameters",
                 "speed": "~18 tok/s",
                 "status": "Active",
@@ -144,17 +156,110 @@ async def get_available_models():
     }
 
 
+@app.get("/api/sessions")
+async def get_sessions():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, title, created_at, updated_at FROM sessions ORDER BY updated_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return {"sessions": [dict(r) for r in rows]}
+
+
+@app.post("/api/sessions/new")
+async def create_new_session():
+    new_id = f"chat_{uuid.uuid4().hex[:10]}"
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO sessions (id, title) VALUES (?, ?)", (new_id, "New Dialogue"))
+    conn.commit()
+    conn.close()
+    return {"session_id": new_id, "title": "New Dialogue"}
+
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+    cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    conn.commit()
+    conn.close()
+    return {"deleted": session_id}
+
+
+@app.get("/api/history/{session_id}")
+async def get_history(session_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, turn_id, role, content, model_name, timestamp FROM messages WHERE session_id = ? ORDER BY id ASC",
+        (session_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return {"history": [dict(r) for r in rows]}
+
+
+@app.delete("/api/messages/{message_id}")
+async def delete_turn(message_id: int):
+    """Deletes a message and its paired prompt/response turn."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT session_id, turn_id FROM messages WHERE id = ?", (message_id,))
+    row = cursor.fetchone()
+    if row:
+        session_id, turn_id = row["session_id"], row["turn_id"]
+        cursor.execute("DELETE FROM messages WHERE session_id = ? AND turn_id = ?", (session_id, turn_id))
+        conn.commit()
+    conn.close()
+    return {"deleted_turn": turn_id if row else None}
+
+
+@app.post("/api/messages/rewind/{message_id}")
+async def rewind_to_message(message_id: int):
+    """Rewinds session history up to the selected message (deletes everything after)."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT session_id FROM messages WHERE id = ?", (message_id,))
+    row = cursor.fetchone()
+    if row:
+        session_id = row["session_id"]
+        cursor.execute("DELETE FROM messages WHERE session_id = ? AND id > ?", (session_id, message_id))
+        conn.commit()
+    conn.close()
+    return {"rewound_to": message_id}
+
+
 @app.post("/api/chat")
 async def chat_stream(req: ChatRequest):
     user_msg = req.messages[-1]["content"] if req.messages else ""
     
-    # Save user query to SQLite memory
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
+    
+    # Ensure session exists
+    cursor.execute("SELECT id, title FROM sessions WHERE id = ?", (req.session_id,))
+    sess = cursor.fetchone()
+    if not sess:
+        title = (user_msg[:30] + "...") if len(user_msg) > 30 else user_msg
+        cursor.execute("INSERT INTO sessions (id, title) VALUES (?, ?)", (req.session_id, title or "Dialogue"))
+    elif sess["title"] == "New Dialogue" and user_msg:
+        title = (user_msg[:30] + "...") if len(user_msg) > 30 else user_msg
+        cursor.execute("UPDATE sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (title, req.session_id))
+    else:
+        cursor.execute("UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (req.session_id,))
+
+    # Compute turn_id
+    cursor.execute("SELECT COALESCE(MAX(turn_id), 0) + 1 AS next_turn FROM messages WHERE session_id = ?", (req.session_id,))
+    next_turn = cursor.fetchone()["next_turn"]
+
+    # Save user message
     cursor.execute(
-        "INSERT INTO conversations (session_id, model_name, role, content) VALUES (?, ?, ?, ?)",
-        (req.session_id, req.model, "user", user_msg)
+        "INSERT INTO messages (session_id, turn_id, role, content, model_name) VALUES (?, ?, ?, ?, ?)",
+        (req.session_id, next_turn, "user", user_msg, req.model)
     )
+    user_msg_id = cursor.lastrowid
     conn.commit()
     conn.close()
 
@@ -189,32 +294,20 @@ async def chat_stream(req: ChatRequest):
             full_response = fallback
             yield f"data: {json.dumps({'delta': fallback})}\n\n"
 
-        yield f"data: {json.dumps({'done': True})}\n\n"
-
         # Record assistant response to SQLite
-        conn_sub = sqlite3.connect(DB_PATH)
+        conn_sub = get_db()
         cur_sub = conn_sub.cursor()
         cur_sub.execute(
-            "INSERT INTO conversations (session_id, model_name, role, content) VALUES (?, ?, ?, ?)",
-            (req.session_id, req.model, "assistant", full_response)
+            "INSERT INTO messages (session_id, turn_id, role, content, model_name) VALUES (?, ?, ?, ?, ?)",
+            (req.session_id, next_turn, "assistant", full_response, req.model)
         )
+        asst_msg_id = cur_sub.lastrowid
         conn_sub.commit()
         conn_sub.close()
 
+        yield f"data: {json.dumps({'done': True, 'user_msg_id': user_msg_id, 'asst_msg_id': asst_msg_id})}\n\n"
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-@app.get("/api/history/{session_id}")
-async def get_history(session_id: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT role, content, timestamp FROM conversations WHERE session_id = ? ORDER BY id ASC",
-        (session_id,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return {"history": [{"role": r[0], "content": r[1], "timestamp": r[2]} for r in rows]}
 
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
