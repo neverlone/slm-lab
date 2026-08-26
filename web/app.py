@@ -1,13 +1,16 @@
 """
 Takatsuki Neural Web Chat & Persistent Memory API Server.
-High-concurrency non-blocking async server.
+Features:
+- 100% Local Inference on sen-takatsuki (ARM64 24GB RAM).
+- Refusal-Free / Abliterated uncensored model engines.
+- Sen Takatsuki Persona (Eto Yoshimura from Tokyo Ghoul).
+- SQLite Persistent Memory.
 """
 
 import os
 import time
 import json
 import sqlite3
-import httpx
 from typing import List, Dict, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
@@ -28,7 +31,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_INDEX = os.path.join(BASE_DIR, "static", "index.html")
 DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "data", "takatsuki_memory.db")
 MODELS_DIR = os.path.join(os.path.dirname(BASE_DIR), "models")
-DATA_FORGE_WORKER_URL = "http://localhost:8001/chat"
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
@@ -53,8 +55,8 @@ SEN_TAKATSUKI_SYSTEM_PROMPT = (
 
 loaded_models = {}
 
-def get_local_llama_engine(model_id: str):
-    """Loads and caches local GGUF models on sen-takatsuki."""
+def get_llama_engine(model_id: str):
+    """Loads and caches local GGUF models on sen-takatsuki with 4 ARM64 threads."""
     try:
         from llama_cpp import Llama
     except ImportError:
@@ -75,7 +77,9 @@ def get_local_llama_engine(model_id: str):
             return None
 
     if model_id not in loaded_models:
-        print(f"Loading local neural weights for {model_id} from {model_path}...")
+        print(f"Loading neural weights for {model_id} from {model_path}...")
+        # Clean old models from RAM if switching to preserve memory
+        loaded_models.clear()
         loaded_models[model_id] = Llama(
             model_path=model_path,
             n_ctx=2048,
@@ -119,14 +123,14 @@ async def get_available_models():
         "models": [
             {
                 "id": "Takatsuki-8B",
-                "name": "Takatsuki-8B (16-Core EPYC Worker)",
+                "name": "Takatsuki-8B (Flagship Refusal-Free)",
                 "size": "8.0B Parameters",
-                "speed": "Fast (16 vCPUs AMD EPYC)",
+                "speed": "~10 tok/s",
                 "status": "Active",
             },
             {
                 "id": "Takatsuki-3B",
-                "name": "Takatsuki-3B (Conversational)",
+                "name": "Takatsuki-3B (Abliterated Conversational)",
                 "size": "3.0B Parameters",
                 "speed": "~18 tok/s",
                 "status": "Active",
@@ -160,73 +164,32 @@ async def chat_stream(req: ChatRequest):
     for m in req.messages:
         prompt_messages.append({"role": m["role"], "content": m["content"]})
 
+    engine = get_llama_engine(req.model)
+
     async def event_generator():
         full_response = ""
 
-        # Route Takatsuki-8B to 16-core data-forge machine asynchronously
-        if req.model == "Takatsuki-8B":
+        if engine is not None:
             try:
-                payload = {
-                    "messages": prompt_messages,
-                    "temperature": req.temperature,
-                    "max_tokens": req.max_tokens,
-                }
-                async with httpx.AsyncClient(timeout=120.0) as client:
-                    async with client.stream("POST", DATA_FORGE_WORKER_URL, json=payload) as resp:
-                        async for line in resp.aiter_lines():
-                            if line.startswith("data: "):
-                                try:
-                                    chunk = json.loads(line[6:])
-                                    if "delta" in chunk:
-                                        full_response += chunk["delta"]
-                                        yield f"data: {json.dumps({'delta': chunk['delta']})}\n\n"
-                                except Exception:
-                                    pass
-
+                stream = engine.create_chat_completion(
+                    messages=prompt_messages,
+                    max_tokens=req.max_tokens,
+                    temperature=req.temperature,
+                    stream=True,
+                )
+                for chunk in stream:
+                    delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                    if delta:
+                        full_response += delta
+                        yield f"data: {json.dumps({'delta': delta})}\n\n"
             except Exception as e:
-                # Fallback to local 8B engine
-                local_engine = get_local_llama_engine("Takatsuki-8B")
-                if local_engine:
-                    stream = local_engine.create_chat_completion(
-                        messages=prompt_messages,
-                        max_tokens=req.max_tokens,
-                        temperature=req.temperature,
-                        stream=True,
-                    )
-                    for chunk in stream:
-                        delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                        if delta:
-                            full_response += delta
-                            yield f"data: {json.dumps({'delta': delta})}\n\n"
-                else:
-                    err_msg = f"\n[Connecting to worker: {e}]"
-                    full_response += err_msg
-                    yield f"data: {json.dumps({'delta': err_msg})}\n\n"
-
+                err_msg = f"\n[Inference Error: {e}]"
+                full_response += err_msg
+                yield f"data: {json.dumps({'delta': err_msg})}\n\n"
         else:
-            # Local execution for 150M and 3B
-            engine = get_local_llama_engine(req.model)
-            if engine is not None:
-                try:
-                    stream = engine.create_chat_completion(
-                        messages=prompt_messages,
-                        max_tokens=req.max_tokens,
-                        temperature=req.temperature,
-                        stream=True,
-                    )
-                    for chunk in stream:
-                        delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                        if delta:
-                            full_response += delta
-                            yield f"data: {json.dumps({'delta': delta})}\n\n"
-                except Exception as e:
-                    err_msg = f"\n[Inference Error: {e}]"
-                    full_response += err_msg
-                    yield f"data: {json.dumps({'delta': err_msg})}\n\n"
-            else:
-                fallback = "Model engine is initializing."
-                full_response = fallback
-                yield f"data: {json.dumps({'delta': fallback})}\n\n"
+            fallback = "Model engine is initializing."
+            full_response = fallback
+            yield f"data: {json.dumps({'delta': fallback})}\n\n"
 
         yield f"data: {json.dumps({'done': True})}\n\n"
 
