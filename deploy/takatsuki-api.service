@@ -1,0 +1,30 @@
+[Unit]
+Description=Takatsuki private inference API for missyou.one
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/projects/slm-lab
+EnvironmentFile=/etc/takatsuki-api.env
+ExecStart=/home/ubuntu/projects/slm-lab/.venv/bin/uvicorn web.missyou_api:app --host 127.0.0.1 --port 8031 --workers 1 --no-access-log
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+TimeoutStopSec=30
+KillSignal=SIGINT
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ReadOnlyPaths=/home/ubuntu/projects/slm-lab
+UMask=0077
+LimitNOFILE=8192
+MemoryHigh=12G
+MemoryMax=16G
+
+[Install]
+WantedBy=multi-user.target
+
