@@ -8,6 +8,7 @@ complete authorized conversation context on every request.
 import asyncio
 import hmac
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -40,8 +41,8 @@ app = FastAPI(
     openapi_url=None,
 )
 inference_lock = asyncio.Lock()
-loaded_model_id: str | None = None
-loaded_engine: Llama | None = None
+loaded_engines: dict[str, Llama] = {}
+models_ready = False
 
 
 class ChatMessage(BaseModel):
@@ -81,17 +82,15 @@ def authorize(authorization: str | None) -> None:
 
 
 def engine_for(model_id: str) -> Llama:
-    global loaded_engine, loaded_model_id
     model_path = MODEL_PATHS.get(model_id)
     if model_path is None:
         raise ValueError("Unknown model")
     if not model_path.is_file() or model_path.stat().st_size < 1_000_000:
         raise FileNotFoundError(f"Model artifact unavailable: {model_id}")
-    if loaded_engine is None or loaded_model_id != model_id:
-        # Keep only one model resident on the CPU host. There is deliberately no
-        # filename fallback: an invalid ID must never load Takatsuki-8B.
-        loaded_engine = None
-        loaded_model_id = None
+    if model_id not in loaded_engines:
+        # There is deliberately no filename fallback: an invalid ID must never
+        # load Takatsuki-8B. Both approved engines remain resident so switching
+        # to the fallback cannot make the next 3B request pay a cold-load delay.
         engine = Llama(
             model_path=str(model_path),
             chat_format="llama-3",
@@ -100,9 +99,18 @@ def engine_for(model_id: str) -> Llama:
             n_threads_batch=THREADS,
             verbose=False,
         )
-        loaded_engine = engine
-        loaded_model_id = model_id
-    return loaded_engine
+        loaded_engines[model_id] = engine
+    return loaded_engines[model_id]
+
+
+@app.on_event("startup")
+async def warm_models() -> None:
+    global models_ready
+    # Loading before startup completes makes readiness truthful after reboot.
+    # Start with the primary model, then keep the lightweight fallback resident.
+    await asyncio.to_thread(engine_for, "Takatsuki-3B-Uncensored")
+    await asyncio.to_thread(engine_for, "Takatsuki-150M")
+    models_ready = True
 
 
 def run_completion(payload: ChatCompletionRequest) -> dict:
@@ -113,10 +121,24 @@ def run_completion(payload: ChatCompletionRequest) -> dict:
         temperature=payload.temperature,
         top_p=payload.top_p,
         repeat_penalty=1.12,
-        stop=["<|eot_id|>", "<|end_of_text|>", "<|eom_id|>"],
+        stop=[
+            "<|eot_id|>", "<|end_of_text|>", "<|eom_id|>",
+            "<|start_header_id|>user<|end_header_id|>",
+            "<|start_header_id|>assistant<|end_header_id|>",
+            "\nuser\n", "\nUser:", "\nHuman:", "\nassistant\n", "\nAssistant:",
+        ],
         stream=False,
     )
     text = str(result.get("choices", [{}])[0].get("message", {}).get("content", "")).strip()
+    # Some custom chat templates leak the beginning of a synthetic next turn.
+    # Truncate only role markers at a line boundary, never ordinary uses of the
+    # words user, human, or assistant inside a response.
+    text = re.split(
+        r"(?:<\|start_header_id\|>\s*(?:user|assistant)|\n\s*(?:user|human|assistant)\s*(?::|\n))",
+        text,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip()
     if not text:
         raise RuntimeError("Model returned an empty completion")
     usage = result.get("usage") or {}
@@ -141,10 +163,10 @@ def run_completion(payload: ChatCompletionRequest) -> dict:
 @app.get("/healthz")
 async def healthz():
     artifacts = {model: path.is_file() and path.stat().st_size >= 1_000_000 for model, path in MODEL_PATHS.items()}
-    status = 200 if API_TOKEN and all(artifacts.values()) else 503
+    status = 200 if API_TOKEN and all(artifacts.values()) and models_ready else 503
     return JSONResponse(
         status_code=status,
-        content={"status": "ok" if status == 200 else "not_ready", "models": artifacts},
+        content={"status": "ok" if status == 200 else "not_ready", "models": artifacts, "warmed": models_ready},
     )
 
 
@@ -181,4 +203,3 @@ async def chat_completions(
         return api_error(500, "Inference failed", "server_error")
     finally:
         inference_lock.release()
-

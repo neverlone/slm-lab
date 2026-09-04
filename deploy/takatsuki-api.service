@@ -22,9 +22,8 @@ ProtectHome=read-only
 ReadOnlyPaths=/home/ubuntu/projects/slm-lab
 UMask=0077
 LimitNOFILE=8192
-MemoryHigh=12G
-MemoryMax=16G
+MemoryHigh=14G
+MemoryMax=18G
 
 [Install]
 WantedBy=multi-user.target
-
