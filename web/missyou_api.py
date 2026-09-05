@@ -126,6 +126,10 @@ def run_completion(payload: ChatCompletionRequest) -> dict:
             "<|start_header_id|>user<|end_header_id|>",
             "<|start_header_id|>assistant<|end_header_id|>",
             "\nuser\n", "\nUser:", "\nHuman:", "\nassistant\n", "\nAssistant:",
+            # Custom checkpoints sometimes omit the newline before a leaked
+            # next-turn marker. Stop there so CPU time is not spent generating
+            # a conversation that response cleanup will discard anyway.
+            "user\n\n", "User\n\n", "assistant\n\n", "Assistant\n\n",
         ],
         stream=False,
     )
