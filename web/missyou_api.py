@@ -26,6 +26,7 @@ MODELS_DIR = APP_ROOT / "models"
 API_TOKEN = os.environ.get("TAKATSUKI_API_KEY", "")
 CONTEXT_WINDOW = int(os.environ.get("TAKATSUKI_CONTEXT_WINDOW", "8192"))
 THREADS = int(os.environ.get("TAKATSUKI_THREADS", "4"))
+BATCH_THREADS = int(os.environ.get("TAKATSUKI_BATCH_THREADS", "8"))
 MAX_PROMPT_CHARS = int(os.environ.get("TAKATSUKI_MAX_PROMPT_CHARS", "28000"))
 QUEUE_WAIT_SECONDS = float(os.environ.get("TAKATSUKI_QUEUE_WAIT_SECONDS", "2"))
 
@@ -96,7 +97,9 @@ def engine_for(model_id: str) -> Llama:
             chat_format="llama-3",
             n_ctx=CONTEXT_WINDOW,
             n_threads=THREADS,
-            n_threads_batch=THREADS,
+            # Prompt ingestion parallelizes well across all eight logical CPUs
+            # on the i7-7700HQ; token generation remains on four physical cores.
+            n_threads_batch=BATCH_THREADS,
             verbose=False,
         )
         loaded_engines[model_id] = engine
