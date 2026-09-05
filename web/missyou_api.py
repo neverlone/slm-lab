@@ -130,11 +130,16 @@ def run_completion(payload: ChatCompletionRequest) -> dict:
         stream=False,
     )
     text = str(result.get("choices", [{}])[0].get("message", {}).get("content", "")).strip()
+    # Some custom checkpoints emit their own assistant header before the real
+    # answer. It belongs to the current turn, so remove it instead of treating
+    # the whole completion as an empty synthetic next turn.
+    text = re.sub(r"^(?:assistant)\s*(?::|\n)+\s*", "", text, count=1, flags=re.IGNORECASE)
+
     # Some custom chat templates leak the beginning of a synthetic next turn.
     # Truncate only role markers at a line boundary, never ordinary uses of the
     # words user, human, or assistant inside a response.
     text = re.split(
-        r"(?:<\|start_header_id\|>\s*(?:user|assistant)|\n\s*(?:user|human|assistant)\s*(?::|\n))",
+        r"(?:<\|start_header_id\|>\s*(?:user|assistant)|\n\s*(?:user|human|assistant)\s*(?::|\n)|(?<=[.!?])(?:user|human|assistant)\s*(?::|\n))",
         text,
         maxsplit=1,
         flags=re.IGNORECASE,
